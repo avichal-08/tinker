@@ -21,6 +21,7 @@ from src.tools.scanner import (
 from src.tools.sensors import (
     get_disk_usage,
     get_listening_ports,
+    get_power_and_thermal_stats,
     get_system_stats,
     get_top_processes,
 )
@@ -156,6 +157,14 @@ TOOLS: list[Any] = [
             "parameters": {"type": "object", "properties": {}},
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_power_and_thermal_stats",
+            "description": "Get battery status, power limits, and CPU frequency to check for thermal throttling or battery drain.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
 ]
 
 AVAILABLE_FUNCTIONS: dict[str, Callable[..., Any]] = {
@@ -167,6 +176,7 @@ AVAILABLE_FUNCTIONS: dict[str, Callable[..., Any]] = {
     "scan_windows_bloat": scan_windows_bloat,
     "scan_project_artifacts": scan_project_artifacts,
     "get_listening_ports": get_listening_ports,
+    "get_power_and_thermal_stats": get_power_and_thermal_stats,
 }
 
 

@@ -92,6 +92,50 @@ def get_listening_ports() -> list[dict]:
     return sorted(unique_ports, key=lambda x: x["port"])
 
 
+def get_power_and_thermal_stats() -> dict:
+    stats = {}
+
+    if hasattr(psutil, "sensors_battery"):
+        battery = psutil.sensors_battery()
+        if battery:
+            time_left = "Unlimited/Unknown"
+            if battery.secsleft != psutil.POWER_TIME_UNLIMITED and battery.secsleft > 0:
+                time_left = f"{round(battery.secsleft / 60)} minutes"
+
+            stats["battery"] = {
+                "percent_charged": round(battery.percent, 1),
+                "is_plugged_in": battery.power_plugged,
+                "time_left": time_left,
+            }
+        else:
+            stats["battery"] = "No battery detected (desktop or restricted VM)."
+
+    if hasattr(psutil, "cpu_freq"):
+        freq = psutil.cpu_freq()
+        if freq:
+            stats["cpu_freq"] = {
+                "current_mhz": round(freq.current, 1),
+                "min_mhz": round(freq.min, 1),
+                "max_mhz": round(freq.max, 1),
+            }
+
+    if hasattr(psutil, "sensors_temperatures"):
+        temps = psutil.sensors_temperatures()
+        if temps:
+            simplified_temps = {}
+            for name, entries in temps.items():
+                simplified_temps[name] = [
+                    round(e.current, 1) for e in entries if e.current > 0
+                ]
+            stats["temperatures_celsius"] = simplified_temps
+        else:
+            stats["temperatures_celsius"] = (
+                "Hardware temperature sensors not exposed by OS."
+            )
+
+    return stats
+
+
 if __name__ == "__main__":
     print("System Stats:", get_system_stats())
     print("\nTop 3 Processes:")
