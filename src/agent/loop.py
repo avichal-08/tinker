@@ -18,7 +18,12 @@ from src.tools.scanner import (
     scan_project_artifacts,
     scan_windows_bloat,
 )
-from src.tools.sensors import get_disk_usage, get_system_stats, get_top_processes
+from src.tools.sensors import (
+    get_disk_usage,
+    get_listening_ports,
+    get_system_stats,
+    get_top_processes,
+)
 
 load_dotenv()
 
@@ -143,6 +148,14 @@ TOOLS: list[Any] = [
             "parameters": {"type": "object", "properties": {}},
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_listening_ports",
+            "description": "Get a list of all open network ports and the processes (PIDs) listening on them.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
 ]
 
 AVAILABLE_FUNCTIONS: dict[str, Callable[..., Any]] = {
@@ -153,6 +166,7 @@ AVAILABLE_FUNCTIONS: dict[str, Callable[..., Any]] = {
     "scan_docker_bloat": scan_docker_bloat,
     "scan_windows_bloat": scan_windows_bloat,
     "scan_project_artifacts": scan_project_artifacts,
+    "get_listening_ports": get_listening_ports,
 }
 
 
