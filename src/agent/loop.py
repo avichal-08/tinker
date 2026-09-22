@@ -1,3 +1,4 @@
+import inspect
 import json
 import os
 from typing import Any, Callable
@@ -159,11 +160,17 @@ def run_diagnostic(
     user_query: str,
     on_tool_call: Callable[[str], None] | None = None,
     on_approval: Callable[[str, float, str], bool] | None = None,
-) -> str:
-    messages: list[Any] = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": user_query},
-    ]
+    chat_history: list[dict] | None = None,
+) -> tuple[str, list[Any]]:
+
+    messages: list[Any] = []
+
+    if chat_history is None:
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    else:
+        messages = chat_history.copy()
+
+    messages.append({"role": "user", "content": user_query})
 
     while True:
         response = client.chat.completions.create(
@@ -178,7 +185,7 @@ def run_diagnostic(
         messages.append(message)
 
         if not message.tool_calls:
-            return message.content or "No diagnosis could be determined."
+            return (message.content or "No diagnosis could be determined.", messages)
 
         for tool_call in message.tool_calls:
             tool_func = getattr(tool_call, "function", None)
@@ -241,7 +248,10 @@ def run_diagnostic(
                 function_to_call = AVAILABLE_FUNCTIONS.get(function_name)
                 if not function_to_call:
                     continue
-                result = function_to_call(**arguments)
+                sig = inspect.signature(function_to_call)
+                safe_args = {k: v for k, v in arguments.items() if k in sig.parameters}
+
+                result = function_to_call(**safe_args)
 
             if isinstance(result, BaseModel):
                 content_str = result.model_dump_json()

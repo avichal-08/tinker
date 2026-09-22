@@ -12,7 +12,8 @@ dependencies = [
     "typer",
     "openai",
     "python-dotenv",
-    "docker"
+    "docker",
+    "send2trash"
 ]
 
 [project.scripts]

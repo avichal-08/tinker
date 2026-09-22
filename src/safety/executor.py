@@ -1,11 +1,11 @@
 import os
-import shutil
 from pathlib import Path
 
 import docker
 import psutil
 from docker.errors import DockerException
 from pydantic import BaseModel
+from send2trash import send2trash
 
 
 class ExecutionResult(BaseModel):
@@ -49,9 +49,7 @@ def execute_cache_cleanup(target_path: str, target_id: str) -> ExecutionResult:
     for item in target.iterdir():
         try:
             if item.is_file() or item.is_symlink():
-                size = item.stat().st_size
-                item.unlink()
-                freed_bytes += size
+                freed_bytes += item.stat().st_size
             elif item.is_dir():
                 for root, _, files in os.walk(item):
                     for f in files:
@@ -59,7 +57,9 @@ def execute_cache_cleanup(target_path: str, target_id: str) -> ExecutionResult:
                             freed_bytes += (Path(root) / f).stat().st_size
                         except (PermissionError, FileNotFoundError):
                             pass
-                shutil.rmtree(item, ignore_errors=True)
+
+            send2trash(str(item))
+
         except (PermissionError, FileNotFoundError):
             continue
 
@@ -70,7 +70,7 @@ def execute_cache_cleanup(target_path: str, target_id: str) -> ExecutionResult:
         target_id=target_id,
         freed_mb=freed_mb,
         success=True,
-        message=f"Cleaned {target.name}",
+        message=f"Moved contents of {target.name} to Recycle Bin",
         disk_before_gb=disk_before,
         disk_after_gb=disk_after,
     )
