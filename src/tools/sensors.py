@@ -1,4 +1,5 @@
 import os
+import winreg
 
 import psutil
 from pydantic import BaseModel
@@ -134,6 +135,39 @@ def get_power_and_thermal_stats() -> dict:
             )
 
     return stats
+
+
+def get_startup_programs() -> list[dict]:
+    startup_apps = []
+
+    hives = [
+        (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run"),
+        (winreg.HKEY_LOCAL_MACHINE, r"Software\Microsoft\Windows\CurrentVersion\Run"),
+    ]
+
+    for hive, subkey in hives:
+        try:
+            with winreg.OpenKey(hive, subkey, 0, winreg.KEY_READ) as key:
+                i = 0
+                while True:
+                    try:
+                        name, value, _ = winreg.EnumValue(key, i)
+                        startup_apps.append(
+                            {
+                                "name": name,
+                                "command": value,
+                                "scope": "Current User"
+                                if hive == winreg.HKEY_CURRENT_USER
+                                else "System-Wide",
+                            }
+                        )
+                        i += 1
+                    except OSError:
+                        break
+        except (FileNotFoundError, PermissionError):
+            continue
+
+    return startup_apps
 
 
 if __name__ == "__main__":

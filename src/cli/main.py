@@ -25,6 +25,7 @@ def get_ui_callbacks(status):
             "clean_cache": "executing safe cleanup",
             "terminate_process": "terminating process",
             "get_power_and_thermal_stats": "power and thermal sensors",
+            "get_startup_programs": "Windows startup registry",
         }
         name = friendly_names.get(tool_name, tool_name)
         status.update(f"[bold yellow]Inspecting {name}...")

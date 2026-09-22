@@ -22,6 +22,7 @@ from src.tools.sensors import (
     get_disk_usage,
     get_listening_ports,
     get_power_and_thermal_stats,
+    get_startup_programs,
     get_system_stats,
     get_top_processes,
 )
@@ -32,18 +33,21 @@ client = OpenAI(
     api_key=os.environ.get("GROQ_API_KEY"), base_url="https://api.groq.com/openai/v1"
 )
 
-SYSTEM_PROMPT = """You are Computer Mechanic, an evidence-driven AI agent that diagnoses and fixes computer issues.
+SYSTEM_PROMPT = """You are Tinker, an evidence-driven AI agent that diagnoses and fixes computer issues.
 You must follow this loop: Observe → Investigate → Diagnose → Plan → Act → Verify.
 
 When asked to clean up space or memory:
 1. Run scanners to find targets.
-2. IMMEDIATELY call clean_cache(target_id) or terminate_process(pid) for the targets you want to fix. DO NOT ask the user for permission in text. The tool itself will automatically pause and securely prompt the user.
+2. IMMEDIATELY call clean_cache(target_id) or terminate_process(pid). DO NOT ask the user for permission in text.
 3. If the tool returns that permission was denied, stop and report it.
-4. If approved and successful, verify the recovered resources based on the tool's return data.
+4. If approved, verify the recovered resources.
+
+CRITICAL CAPABILITY RULE:
+You ONLY have tools to delete caches/files and terminate processes. You DO NOT have tools to modify the Windows Registry, uninstall apps, or change OS settings. If a user asks you to do something you lack a tool for, provide clear step-by-step manual instructions and explicitly state you cannot do it automatically.
 
 Format your final output strictly as:
 Observed: [Hard data]
-Action Taken: [What was cleaned/killed and how much space/memory was verified as freed, or what was denied]
+Action Taken: [What was cleaned/killed, or what manual steps were provided]
 Current Status: [New system state]
 """
 
@@ -165,6 +169,14 @@ TOOLS: list[Any] = [
             "parameters": {"type": "object", "properties": {}},
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_startup_programs",
+            "description": "Inspect the Windows Registry to find applications configured to launch at startup.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
 ]
 
 AVAILABLE_FUNCTIONS: dict[str, Callable[..., Any]] = {
@@ -177,6 +189,7 @@ AVAILABLE_FUNCTIONS: dict[str, Callable[..., Any]] = {
     "scan_project_artifacts": scan_project_artifacts,
     "get_listening_ports": get_listening_ports,
     "get_power_and_thermal_stats": get_power_and_thermal_stats,
+    "get_startup_programs": get_startup_programs,
 }
 
 
