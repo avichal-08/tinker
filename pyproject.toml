@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tinker"
+version = "0.1.0"
+dependencies = [
+    "pydantic",
+    "psutil",
+    "rich",
+    "typer",
+    "openai",
+    "python-dotenv"
+]
+
+[project.scripts]
+tinker = "src.cli.main:app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src", "src.*"]

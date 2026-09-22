@@ -4,10 +4,10 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.prompt import Confirm
 
-from agent import run_diagnostic
+from src.agent.loop import run_diagnostic
 
 app = typer.Typer(
-    help="Computer Mechanic: Local-first AI agent for system maintenance."
+    help="Tinker: Local-first AI agent for system maintenance."
 )
 console = Console()
 
@@ -16,7 +16,7 @@ console = Console()
 def diagnose(query: str = typer.Argument("Why is my computer slow?")):
     console.print(
         Panel.fit(
-            f"[bold cyan]COMPUTER MECHANIC[/bold cyan]\n[dim]Query: {query}[/dim]",
+            f"[bold cyan]TINKER[/bold cyan]\n[dim]Query: {query}[/dim]",
             border_style="cyan",
         )
     )
@@ -32,6 +32,7 @@ def diagnose(query: str = typer.Argument("Why is my computer slow?")):
                 "get_disk_usage": "primary disk space",
                 "scan_developer_caches": "developer caches & temp files",
                 "clean_cache": "executing safe cleanup",
+                "terminate_process": "terminating process",
             }
             name = friendly_names.get(tool_name, tool_name)
             status.update(f"[bold yellow]Inspecting {name}...")
