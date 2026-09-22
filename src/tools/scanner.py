@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+import docker
+from docker.errors import DockerException
 from pydantic import BaseModel
 
 
@@ -91,6 +93,64 @@ def scan_developer_caches() -> list[CleanupTarget]:
                 )
 
     return found_targets
+
+
+def scan_docker_bloat() -> list[CleanupTarget]:
+    try:
+        client = docker.from_env()
+        client.ping()
+    except DockerException:
+        return []
+
+    targets = []
+
+    dangling_images = client.images.list(filters={"dangling": True})
+    dangling_size = sum(img.attrs.get("Size", 0) for img in dangling_images)
+    if dangling_size > 1024 * 1024:
+        targets.append(
+            CleanupTarget(
+                id="docker_dangling_images",
+                name="Docker Dangling Images",
+                category="docker",
+                path="Docker Engine",
+                size_mb=round(dangling_size / (1024 * 1024), 2),
+                risk_level="LOW",
+                description="Unused, untagged Docker image layers.",
+            )
+        )
+
+    stopped_containers = client.containers.list(filters={"status": "exited"})
+    if stopped_containers:
+        targets.append(
+            CleanupTarget(
+                id="docker_stopped_containers",
+                name=f"Stopped Docker Containers ({len(stopped_containers)})",
+                category="docker",
+                path="Docker Engine",
+                size_mb=0.0,
+                risk_level="MEDIUM",
+                description="Containers that have exited and are no longer running.",
+            )
+        )
+
+    volumes = client.volumes.list()
+    unused_volumes = [
+        v for v in volumes if not v.attrs.get("UsageData", {}).get("RefCount", 1) > 0
+    ]
+    if unused_volumes:
+        targets.append(
+            CleanupTarget(
+                id="docker_unused_volumes",
+                name=f"Unused Docker Volumes ({len(unused_volumes)})",
+                category="docker",
+                path="Docker Engine",
+                size_mb=0.0,
+                risk_level="MEDIUM",
+                description="Persistent volumes not attached to any container.",
+            )
+        )
+
+    return targets
 
 
 if __name__ == "__main__":

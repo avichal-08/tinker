@@ -11,7 +11,8 @@ dependencies = [
     "rich",
     "typer",
     "openai",
-    "python-dotenv"
+    "python-dotenv",
+    "docker"
 ]
 
 [project.scripts]

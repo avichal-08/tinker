@@ -2,7 +2,9 @@ import os
 import shutil
 from pathlib import Path
 
+import docker
 import psutil
+from docker.errors import DockerException
 from pydantic import BaseModel
 
 
@@ -134,3 +136,59 @@ def execute_terminate_process(pid: int) -> ProcessResult:
         return ProcessResult(
             pid=pid, name="Unknown", success=False, message=str(e), freed_mb=0.0
         )
+
+
+def execute_docker_cleanup(target_id: str) -> ExecutionResult:
+    disk_before = get_free_disk_gb()
+    freed_bytes = 0
+    message = ""
+
+    try:
+        client = docker.from_env()
+
+        if target_id == "docker_dangling_images":
+            result = client.images.prune(filters={"dangling": True})
+            freed_bytes = result.get("SpaceReclaimed") or 0
+            message = "Pruned dangling images."
+
+        elif target_id == "docker_stopped_containers":
+            result = client.containers.prune()
+            freed_bytes = result.get("SpaceReclaimed") or 0
+            deleted = result.get("ContainersDeleted") or []
+            message = f"Pruned {len(deleted)} stopped containers."
+
+        elif target_id == "docker_unused_volumes":
+            result = client.volumes.prune()
+            freed_bytes = result.get("SpaceReclaimed") or 0
+            deleted = result.get("VolumesDeleted") or []
+            message = f"Pruned {len(deleted)} unused volumes."
+
+        else:
+            return ExecutionResult(
+                target_id=target_id,
+                freed_mb=0.0,
+                success=False,
+                message=f"Unknown Docker target ID: {target_id}",
+                disk_before_gb=disk_before,
+                disk_after_gb=disk_before,
+            )
+
+    except DockerException as e:
+        return ExecutionResult(
+            target_id=target_id,
+            freed_mb=0.0,
+            success=False,
+            message=f"Docker error: {str(e)}",
+            disk_before_gb=disk_before,
+            disk_after_gb=disk_before,
+        )
+
+    disk_after = get_free_disk_gb()
+    return ExecutionResult(
+        target_id=target_id,
+        freed_mb=round(freed_bytes / (1024 * 1024), 2),
+        success=True,
+        message=message,
+        disk_before_gb=disk_before,
+        disk_after_gb=disk_after,
+    )

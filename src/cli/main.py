@@ -6,9 +6,7 @@ from rich.prompt import Confirm
 
 from src.agent.loop import run_diagnostic
 
-app = typer.Typer(
-    help="Tinker: Local-first AI agent for system maintenance."
-)
+app = typer.Typer(help="Tinker: Local-first AI agent for system maintenance.")
 console = Console()
 
 
@@ -31,6 +29,7 @@ def diagnose(query: str = typer.Argument("Why is my computer slow?")):
                 "get_top_processes": "top processes",
                 "get_disk_usage": "primary disk space",
                 "scan_developer_caches": "developer caches & temp files",
+                "scan_docker_bloat": "Docker bloat",
                 "clean_cache": "executing safe cleanup",
                 "terminate_process": "terminating process",
             }

@@ -6,8 +6,12 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from pydantic import BaseModel
 
-from src.safety.executor import execute_cache_cleanup, execute_terminate_process
-from src.tools.scanner import scan_developer_caches
+from src.safety.executor import (
+    execute_cache_cleanup,
+    execute_docker_cleanup,
+    execute_terminate_process,
+)
+from src.tools.scanner import scan_developer_caches, scan_docker_bloat
 from src.tools.sensors import get_disk_usage, get_system_stats, get_top_processes
 
 load_dotenv()
@@ -84,7 +88,6 @@ TOOLS: list[Any] = [
             },
         },
     },
-    # Add this dictionary inside the TOOLS list
     {
         "type": "function",
         "function": {
@@ -110,6 +113,14 @@ TOOLS: list[Any] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "scan_docker_bloat",
+            "description": "Scan the Docker daemon for dangling images, stopped containers, and unused volumes. Returns targets with IDs and sizes.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
 ]
 
 AVAILABLE_FUNCTIONS: dict[str, Callable[..., Any]] = {
@@ -117,6 +128,7 @@ AVAILABLE_FUNCTIONS: dict[str, Callable[..., Any]] = {
     "get_top_processes": get_top_processes,
     "get_disk_usage": get_disk_usage,
     "scan_developer_caches": scan_developer_caches,
+    "scan_docker_bloat": scan_docker_bloat,
 }
 
 
@@ -159,8 +171,12 @@ def run_diagnostic(
 
             if function_name == "clean_cache":
                 target_id = arguments.get("target_id")
-                targets = scan_developer_caches()
-                target = next((t for t in targets if t.id == target_id), None)
+
+                local_targets = scan_developer_caches()
+                docker_targets = scan_docker_bloat()
+                all_targets = local_targets + docker_targets
+
+                target = next((t for t in all_targets if t.id == target_id), None)
 
                 if not target:
                     result = {
@@ -175,7 +191,10 @@ def run_diagnostic(
                         "message": "Action aborted: User denied permission.",
                     }
                 else:
-                    result = execute_cache_cleanup(target.path, target.id)
+                    if target.category == "docker":
+                        result = execute_docker_cleanup(target.id)
+                    else:
+                        result = execute_cache_cleanup(target.path, target.id)
 
             elif function_name == "terminate_process":
                 pid = int(arguments.get("pid", 0))
