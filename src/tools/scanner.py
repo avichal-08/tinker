@@ -153,6 +153,92 @@ def scan_docker_bloat() -> list[CleanupTarget]:
     return targets
 
 
+def scan_windows_bloat() -> list[CleanupTarget]:
+    targets = []
+
+    windir = os.environ.get("WINDIR", "C:\\Windows")
+    update_cache = Path(windir) / "SoftwareDistribution" / "Download"
+
+    if update_cache.exists() and update_cache.is_dir():
+        try:
+            size = get_dir_size_mb(update_cache)
+            if size > 10.0:
+                targets.append(
+                    CleanupTarget(
+                        id="windows_update_cache",
+                        name="Windows Update Cache",
+                        category="windows_bloat",
+                        path=str(update_cache),
+                        size_mb=size,
+                        risk_level="MEDIUM",
+                        description="Temp files for Windows Updates. Safe to delete if not actively updating.",
+                    )
+                )
+        except PermissionError:
+            pass
+
+    local_app_data = Path(
+        os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")
+    )
+    crash_dumps = local_app_data / "CrashDumps"
+
+    if crash_dumps.exists() and crash_dumps.is_dir():
+        try:
+            size = get_dir_size_mb(crash_dumps)
+            if size > 5.0:
+                targets.append(
+                    CleanupTarget(
+                        id="windows_crash_dumps",
+                        name="App Crash Dumps",
+                        category="windows_bloat",
+                        path=str(crash_dumps),
+                        size_mb=size,
+                        risk_level="LOW",
+                        description="Memory dumps from crashed applications.",
+                    )
+                )
+        except PermissionError:
+            pass
+
+    return targets
+
+
+def scan_project_artifacts(base_dir: str = ".") -> list[CleanupTarget]:
+    targets = []
+    base_path = Path(base_dir).resolve()
+    artifact_names = ["node_modules", ".venv", "target", "__pycache__"]
+
+    try:
+        for root, dirs, files in os.walk(base_path):
+            depth = len(Path(root).relative_to(base_path).parts)
+            if depth >= 3:
+                dirs.clear()
+                continue
+
+            for d in list(dirs):
+                if d in artifact_names:
+                    p = Path(root) / d
+                    size = get_dir_size_mb(p)
+                    if size > 5.0:
+                        parent_name = p.parent.name.lower().replace(" ", "_")
+                        targets.append(
+                            CleanupTarget(
+                                id=f"artifact_{d}_{parent_name}",
+                                name=f"{d} in {p.parent.name}",
+                                category="project_artifact",
+                                path=str(p),
+                                size_mb=size,
+                                risk_level="MEDIUM",
+                                description=f"Heavy developer artifact in {p.parent.name}.",
+                            )
+                        )
+                    dirs.remove(d)
+    except Exception:
+        pass
+
+    return targets
+
+
 if __name__ == "__main__":
     targets = scan_developer_caches()
     print("Found Cleanup Targets:")

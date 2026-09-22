@@ -30,6 +30,8 @@ def diagnose(query: str = typer.Argument("Why is my computer slow?")):
                 "get_disk_usage": "primary disk space",
                 "scan_developer_caches": "developer caches & temp files",
                 "scan_docker_bloat": "Docker bloat",
+                "scan_windows_bloat": "Windows system bloat",
+                "scan_project_artifacts": "local project artifacts",
                 "clean_cache": "executing safe cleanup",
                 "terminate_process": "terminating process",
             }

@@ -11,7 +11,12 @@ from src.safety.executor import (
     execute_docker_cleanup,
     execute_terminate_process,
 )
-from src.tools.scanner import scan_developer_caches, scan_docker_bloat
+from src.tools.scanner import (
+    scan_developer_caches,
+    scan_docker_bloat,
+    scan_project_artifacts,
+    scan_windows_bloat,
+)
 from src.tools.sensors import get_disk_usage, get_system_stats, get_top_processes
 
 load_dotenv()
@@ -121,6 +126,22 @@ TOOLS: list[Any] = [
             "parameters": {"type": "object", "properties": {}},
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "scan_windows_bloat",
+            "description": "Scan for Windows system bloat (like Windows Update cache or Crash Dumps).",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scan_project_artifacts",
+            "description": "Scan the current working directory for heavy project artifacts like node_modules, .venv, or target folders.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
 ]
 
 AVAILABLE_FUNCTIONS: dict[str, Callable[..., Any]] = {
@@ -129,6 +150,8 @@ AVAILABLE_FUNCTIONS: dict[str, Callable[..., Any]] = {
     "get_disk_usage": get_disk_usage,
     "scan_developer_caches": scan_developer_caches,
     "scan_docker_bloat": scan_docker_bloat,
+    "scan_windows_bloat": scan_windows_bloat,
+    "scan_project_artifacts": scan_project_artifacts,
 }
 
 
@@ -172,9 +195,12 @@ def run_diagnostic(
             if function_name == "clean_cache":
                 target_id = arguments.get("target_id")
 
-                local_targets = scan_developer_caches()
-                docker_targets = scan_docker_bloat()
-                all_targets = local_targets + docker_targets
+                all_targets = (
+                    scan_developer_caches()
+                    + scan_docker_bloat()
+                    + scan_windows_bloat()
+                    + scan_project_artifacts()
+                )
 
                 target = next((t for t in all_targets if t.id == target_id), None)
 
